@@ -235,6 +235,7 @@ async def home():
             <div class="nav">
                 <a href="/admin">Admin Panel</a>
                 <a href="/chat">Chat Interface</a>
+                
                 <a href="/docs">API Documentation</a>
             </div>
             <div class="feature">
@@ -454,161 +455,223 @@ async def admin_panel():
     </html>
     """
 
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_interface():
     return """
     <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Chat - RAG Chatbot</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; height: 100vh; display: flex; flex-direction: column; }
-            .header { background: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            .nav a { padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; }
-            .chat-container { flex: 1; display: flex; flex-direction: column; max-width: 800px; margin: 20px auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
-            .chat-header { background: #007bff; color: white; padding: 15px; text-align: center; }
-            .chat-messages { flex: 1; padding: 20px; overflow-y: auto; min-height: 400px; max-height: 500px; }
-            .message { margin-bottom: 15px; padding: 12px; border-radius: 8px; max-width: 80%; }
-            .user-message { background: #e3f2fd; margin-left: auto; }
-            .bot-message { background: #f5f5f5; }
-            .chat-input { display: flex; padding: 15px; border-top: 1px solid #ddd; }
-            .chat-input input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; margin-right: 10px; }
-            .chat-input button { padding: 12px 20px; background: #007bff; color: white; border: none; border-radius: 25px; cursor: pointer; }
-            .chat-input button:hover { background: #0056b3; }
-            .chat-input button:disabled { background: #6c757d; cursor: not-allowed; }
-            .typing { font-style: italic; color: #666; }
-            .timestamp { font-size: 11px; color: #999; margin-top: 5px; }
-            .sources { font-size: 12px; color: #666; margin-top: 8px; font-style: italic; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div class="nav">
-                <a href="/">Home</a>
-                <a href="/admin">Admin Panel</a>
+<html>
+<head>
+    <title>RAG Chatbot</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: white; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+        .chat-container { 
+            width: 100%; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            background: white; 
+        }
+        .chat-header { 
+            background: #007bff; 
+            color: white; 
+            padding: 15px; 
+            text-align: center; 
+        }
+        .chat-messages { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+        }
+        .message { 
+            margin-bottom: 15px; 
+            padding: 12px; 
+            border-radius: 8px; 
+            max-width: 80%; 
+        }
+        .user-message { 
+            background: #e3f2fd; 
+            margin-left: auto; 
+        }
+        .bot-message { 
+            background: #f5f5f5; 
+        }
+        .chat-input { 
+            display: flex; 
+            padding: 15px; 
+            border-top: 1px solid #ddd; 
+        }
+        .chat-input input { 
+            flex: 1; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 25px; 
+            margin-right: 10px; 
+            outline: none;
+        }
+        .chat-input button { 
+            padding: 12px 20px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 25px; 
+            cursor: pointer; 
+        }
+        .chat-input button:hover { 
+            background: #0056b3; 
+        }
+        .chat-input button:disabled { 
+            background: #6c757d; 
+            cursor: not-allowed; 
+        }
+        .typing { 
+            font-style: italic; 
+            color: #666; 
+        }
+        .timestamp { 
+            font-size: 11px; 
+            color: #999; 
+            margin-top: 5px; 
+        }
+        .sources { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 8px; 
+            font-style: italic; 
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Pranav AI</h2>
+            <p>Ask me anything about Pranav!</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <strong>Pranav AI:</strong> Hello! I'm Pranav AI, powered by documents that Pranav has uploaded. Feel free to ask me anything about Pranav - his projects, experiences, skills, or any information from his documents. What would you like to know?
+                <div class="timestamp" id="initialTimestamp"></div>
             </div>
         </div>
         
-        <div class="chat-container">
-            <div class="chat-header">
-                <h2>RAG Chatbot</h2>
-                <p>Ask me anything about the uploaded documents!</p>
-            </div>
-            
-            <div class="chat-messages" id="chatMessages">
-                <div class="message bot-message">
-                    <strong>Bot:</strong> Hello! I'm here to help you with questions about the uploaded documents. What would you like to know?
-                    <div class="timestamp">${new Date().toLocaleTimeString()}</div>
-                </div>
-            </div>
-            
-            <div class="chat-input">
-                <input type="text" id="messageInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()" id="sendBtn">Send</button>
-            </div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendBtn">Send</button>
         </div>
+    </div>
 
-        <script>
-            let sessionId = generateSessionId();
+    <script>
+        let sessionId = generateSessionId();
+        
+        function generateSessionId() {
+            return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const message = messageInput.value.trim();
             
-            function generateSessionId() {
-                return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-            }
+            if (!message) return;
 
-            function handleKeyPress(event) {
-                if (event.key === 'Enter') {
-                    sendMessage();
-                }
-            }
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
 
-            async function sendMessage() {
-                const messageInput = document.getElementById('messageInput');
-                const sendBtn = document.getElementById('sendBtn');
-                const message = messageInput.value.trim();
-                
-                if (!message) return;
+            const typingId = addTypingIndicator();
 
-                // Add user message to chat
-                addMessage(message, 'user');
-                messageInput.value = '';
-                sendBtn.disabled = true;
-                sendBtn.textContent = 'Sending...';
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId
+                    })
+                });
 
-                // Add typing indicator
-                const typingId = addTypingIndicator();
-
-                try {
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            session_id: sessionId
-                        })
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        removeTypingIndicator(typingId);
-                        addMessage(result.response, 'bot', result.sources);
-                        sessionId = result.session_id;
-                    } else {
-                        const error = await response.json();
-                        removeTypingIndicator(typingId);
-                        addMessage(`Sorry, I encountered an error: ${error.detail}`, 'bot');
-                    }
-                } catch (error) {
+                if (response.ok) {
+                    const result = await response.json();
                     removeTypingIndicator(typingId);
-                    addMessage(`Sorry, I'm having trouble connecting. Please try again.`, 'bot');
-                } finally {
-                    sendBtn.disabled = false;
-                    sendBtn.textContent = 'Send';
+                    addMessage(result.response, 'bot', result.sources);
+                    sessionId = result.session_id;
+                } else {
+                    const error = await response.json();
+                    removeTypingIndicator(typingId);
+                    addMessage(`Sorry, I encountered an error: ${error.detail}`, 'bot');
                 }
+            } catch (error) {
+                removeTypingIndicator(typingId);
+                addMessage(`Sorry, I'm having trouble connecting. Please try again.`, 'bot');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
             }
+        }
 
-            function addMessage(message, type, sources = []) {
-                const chatMessages = document.getElementById('chatMessages');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${type}-message`;
-                
-                let sourcesHtml = '';
-                if (sources && sources.length > 0) {
-                    sourcesHtml = `<div class="sources">Sources: ${sources.join(', ')}</div>`;
-                }
-                
-                messageDiv.innerHTML = `
-                    <strong>${type === 'user' ? 'You' : 'Bot'}:</strong> ${message}
-                    <div class="timestamp">${new Date().toLocaleTimeString()}</div>
-                    ${sourcesHtml}
-                `;
-                
-                chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+        function addMessage(message, type, sources = []) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            
+            let sourcesHtml = '';
+            if (sources && sources.length > 0) {
+                sourcesHtml = `<div class="sources">Sources: ${sources.join(', ')}</div>`;
             }
+            
+            messageDiv.innerHTML = `
+                <strong>${type === 'user' ? 'You' : 'Bot'}:</strong> ${message}
+                <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                ${sourcesHtml}
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-            function addTypingIndicator() {
-                const chatMessages = document.getElementById('chatMessages');
-                const typingDiv = document.createElement('div');
-                const id = 'typing_' + Date.now();
-                typingDiv.id = id;
-                typingDiv.className = 'message bot-message typing';
-                typingDiv.innerHTML = '<strong>Bot:</strong> Typing...';
-                chatMessages.appendChild(typingDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                return id;
-            }
+        function addTypingIndicator() {
+            const chatMessages = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            const id = 'typing_' + Date.now();
+            typingDiv.id = id;
+            typingDiv.className = 'message bot-message typing';
+            typingDiv.innerHTML = '<strong>Pranav AI:</strong> Typing...';
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return id;
+        }
 
-            function removeTypingIndicator(id) {
-                const typingDiv = document.getElementById(id);
-                if (typingDiv) {
-                    typingDiv.remove();
-                }
+        function removeTypingIndicator(id) {
+            const typingDiv = document.getElementById(id);
+            if (typingDiv) {
+                typingDiv.remove();
             }
-        </script>
-    </body>
-    </html>
+        }
+
+        // Set the initial timestamp when page loads
+        window.onload = function() {
+            document.getElementById('initialTimestamp').textContent = new Date().toLocaleTimeString();
+        };
+    </script>
+</body>
+</html>
     """
 
 @app.post("/upload-document")
