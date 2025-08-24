@@ -23,6 +23,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 import json
 import logging
 
+
+
 # Configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -36,6 +38,11 @@ except TypeError as e:
     raise
 
 # Database setup
+directories = ['static', 'templates', 'logs']
+for directory in directories:
+    os.makedirs(directory, exist_ok=True)
+    print(f"✓ Created directory: {directory}")
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
